@@ -5,14 +5,15 @@
 #include <iostream>
 #include <set>
 #include <sstream>
+#include <string>
 
 #include "ReleaseMatcher.hpp"
-constexpr std::string_view                  vertex = "[dag]";
-constexpr std::string_view                  rel    = "[releases]";
-constexpr std::string_view                  tas    = "[tasks]";
-std::vector<ParentChild>                    dag;
-std::vector<Release>                        releases;
-std::vector<std::pair<Release, std::vector<std::string>>> tasks;
+constexpr std::string_view                             vertex = "[dag]";
+constexpr std::string_view                             rel    = "[releases]";
+constexpr std::string_view                             tas    = "[tasks]";
+std::vector<ParentChild>                               dag;
+std::vector<Release>                                   releases;
+std::vector<std::pair<Release, std::set<std::string>>> tasks;
 
 auto main() -> int
 {
@@ -68,42 +69,45 @@ auto main() -> int
     auto end   = line.find("=");
     if (end != std::string::npos)
     {
-      auto rel = line.substr(start, end - start);
-      start    = end + 1;
-      end      = line.find(",",start);
-      if (end != std::string::npos)
+      auto release_name = line.substr(start, end - start);
+      start             = end + 1;
+      end               = line.find(",", start);
+
+      auto vertex = line.substr(start, end - start);
+      start       = end + 1;
+      end         = line.find(",", start);
+      std::tm            t{};
+      std::istringstream timestampstr{line.substr(start, end - start)};
+      timestampstr >> std::get_time(&t, "%Y-%m-%dT%H:%M:%S");
+      if (timestampstr.fail())
       {
-        auto vertex = line.substr(start, end - start);
-        start       = end + 1;
-        end         = line.find(",", start);
-        std::tm            t{};
-        std::istringstream timestampstr{line.substr(start, end - start)};
-        timestampstr >> std::get_time(&t, "%Y-%m-%dT%H:%M:%S");
-        if (timestampstr.fail())
+        std::cout << "Date Parse failed!!!!!!\n";
+      }
+      else
+      {
+        auto release    = Release{release_name, vertex, std::mktime(&t)};
+        auto belongings = std::set<std::string>{};
+        if (end != std::string::npos)
         {
-          std::cout << "Date Parse failed!!!!!!\n";
-        }
-        else
-        {
-          auto release    = Release{rel, vertex, std::mktime(&t)};
-          start           = end + 1;
-          end             = line.find(",", start);
-          auto belongings = std::vector<std::string>{};
+          start = end + 1;
+          end   = line.find(",", start);
           while (end != std::string::npos)
           {
-            belongings.push_back(line.substr(start, end - start));
-            //tasks[release].push_back(line.substr(start, end - start));
+            belongings.insert(line.substr(start, end - start));
+            // tasks[release].push_back(line.substr(start, end - start));
             start = end + 1;
             end   = line.find(",", start);
           }
-            belongings.push_back(line.substr(start, end - start));
-            tasks.emplace_back(release,belongings);
-            //tasks[release].push_back(line.substr(start, end - start));
-                        /*for (auto el :tasks[release]){
-                            std::cout<<rel<<".."<<el<<"..\n";
-                        }
-                        tasks[release]=belongings;*/
+          belongings.insert(line.substr(start, end - start));
         }
+        tasks.emplace_back(release, belongings);
+        /*if (std::ranges::find(releases, rel, &Release::name) == releases.end())
+                  {  releases.push_back(release); }*/
+        // tasks[release].push_back(line.substr(start, end - start));
+        /*for (auto el :tasks[release]){
+            std::cout<<rel<<".."<<el<<"..\n";
+        }
+        tasks[release]=belongings;*/
       }
     }
   };
@@ -132,31 +136,50 @@ auto main() -> int
   {
     if (entry.path().string().ends_with(".ini"))
     {
-      std::cout << entry.path() << std::endl;
       std::ifstream test(entry.path());
 
       if (test)
       {
+        std::cout << "test:" << entry.path() << '\n';
         read_test(test);
-        auto matcher = ReleaseMatcher(dag,releases);
-        std::cout << "owning commits by release: "<<(++tasks.begin())->first.name<<'\n';
-        for (const auto& commit:matcher.commits_of((++tasks.begin())->first))
-        std::cout << commit << ',';
-        std::cout << "|\n";
+        //auto matcher = ReleaseMatcher(dag, releases);
+        for (const auto& task : tasks)
+        {
+          /*std::cout << "owning commits by release: " << task.first.name << '\n';
+          for (const auto& commit : matcher.commits_of(task.first))
+            std::cout << commit << ',';
+          std::cout << "\n";*/
+        auto matcher = ReleaseMatcher(dag, releases);
+          auto res  = matcher.commits_of(task.first);
+          bool pass = task.second == res;
+          std::cout << "Test release: " << task.first.name << ' ' << (pass ? std::string("PASS") : std::string("FAILED")) << '\n';
+          if (!pass)
+          {
+            std::cout << "owning commits by release: " << task.first.name << "\n result: ";
+            for (const auto& commit : res)
+              std::cout << commit << ',';
+            std::cout << "\n";
+            std::cout << " given: ";
+            for (const auto& commit : task.second)
+              std::cout << commit << ',';
+          }
+          std::cout << "\n";
+        }
       }
-//      for (auto el : dag)
-//        std::cout << el.parent << " " << el.child << '\n';
+      else
+        std::cout << "!!!faled reading test " << entry.path() << "\n\n";
+      //      for (auto el : dag)
+      //        std::cout << el.parent << " " << el.child << '\n';
       dag.clear();
-//      for (auto el : releases)
-//        std::cout << el.name << " " << el.commit << " " << el.timestamp << '\n';
+      //      for (auto el : releases)
+      //        std::cout << el.name << " " << el.commit << " " << el.timestamp << '\n';
       releases.clear();
-/*      for (auto el : tasks)
-      {
-        std::cout << el.first.name << " --->>> ";
-        for(auto vel : el.second) std::cout<< " " << vel << '\n';
-      }*/
+      /*      for (auto el : tasks)
+            {
+              std::cout << el.first.name << " --->>> ";
+              for(auto vel : el.second) std::cout<< " " << vel << '\n';
+            }*/
       tasks.clear();
-      std::cout << "end test " << entry.path() << "\n\n";
     }
   }
   return 0;
