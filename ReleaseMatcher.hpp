@@ -39,13 +39,17 @@ public:
   ReleaseMatcher(std::vector<ParentChild> dag, std::vector<Release> releases)
   {
     for (const auto& pc : dag)
+    {
       dag_[pc.child].push_back(pc.parent);
+      dag_.try_emplace(pc.parent);
+    }
     std::ranges::transform(
       releases,
       std::inserter(releases_, releases_.begin()),
-      [](const auto& rel) {
-       // return std::pair<Release, std::vector<std::string>>{rel, {}};
-       return rel;
+      [](const auto& rel)
+      {
+        // return std::pair<Release, std::vector<std::string>>{rel, {}};
+        return rel;
       });
     /*for (const auto& el : dag_)
     {
@@ -59,9 +63,9 @@ public:
   }
   std::set<std::string> commits_of(const Release& release)
   {
-    /*if (false == dag_.contains(release.commit))
+    if (false == dag_.contains(release.commit))
       return {};
-      */
+
 
     auto r_it = releases_.begin();
     for (; r_it != releases_.end(); ++r_it)
@@ -113,7 +117,7 @@ public:
         auto add_to_holder = true;
         for (auto rel_it = releases_.begin(); rel_it != r_it; ++rel_it)
         {
-          if (/*(rel_it->first.commit == commit) || */path_exists(rel_it->commit, commit))
+          if (/*(rel_it->first.commit == commit) || */ path_exists(rel_it->commit, commit))
           {
             //        std::cout << commit << "  true\n";
             add_to_holder = false;
@@ -131,10 +135,10 @@ public:
           holder.push_back(commit);
       }
     }
-/*    if (ownings.size() == 1 && *ownings.begin() == release.commit && releases_.size()>1 && (--releases_.end())->first.name == release.name)
-    {
-      ownings.clear();
-    }*/
+    /*    if (ownings.size() == 1 && *ownings.begin() == release.commit && releases_.size()>1 && (--releases_.end())->first.name == release.name)
+        {
+          ownings.clear();
+        }*/
 
     return ownings;
   }
@@ -205,5 +209,5 @@ private:
   }
   //  std::vector<std::string>  get_ownings()
   mutable std::map<std::string, std::vector<std::string>> dag_;
-  std::set<Release>             releases_;
+  std::set<Release>                                       releases_;
 };
