@@ -66,7 +66,7 @@ public:
     auto r_it = releases_.begin();
     for (; r_it != releases_.end(); ++r_it)
     {
-      if (r_it->first.name == release.name)
+      if (r_it->name == release.name)
         break;
     }
     auto add_release = false;
@@ -77,13 +77,13 @@ public:
     }
     else
     {
-      if (r_it->first.timestamp != release.timestamp)
+      if (r_it->timestamp != release.timestamp)
       {
         std::cout << "@@@@@@@@@@@@@@@@@@@@@@@@ update release time stamp\n";
         releases_.erase(r_it);
         add_release = true;
       }
-      if (r_it->first.commit != release.commit)
+      if (r_it->commit != release.commit)
       {
         std::cout << "############# update release commit\n";
         releases_.erase(r_it);
@@ -91,10 +91,10 @@ public:
       }  // r.timestamp;
     }
     if (add_release)
-      r_it = releases_.insert(r_it, std::pair{release, std::vector<std::string>{}});
+      r_it = releases_.insert(r_it, release);
 
     for (auto rel_it = releases_.begin(); rel_it != r_it; ++rel_it)
-      if (rel_it->first.commit == release.commit)
+      if (rel_it->commit == release.commit)
       {
         std::cout << "heeeej\n";
         return {};
@@ -113,7 +113,7 @@ public:
         auto add_to_holder = true;
         for (auto rel_it = releases_.begin(); rel_it != r_it; ++rel_it)
         {
-          if (/*(rel_it->first.commit == commit) || */path_exists(rel_it->first.commit, commit))
+          if (/*(rel_it->first.commit == commit) || */path_exists(rel_it->commit, commit))
           {
             //        std::cout << commit << "  true\n";
             add_to_holder = false;
