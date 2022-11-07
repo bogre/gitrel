@@ -43,25 +43,10 @@ public:
       dag_[pc.child].push_back(pc.parent);
       dag_.try_emplace(pc.parent);
     }
-    std::ranges::transform(
-      releases,
-      std::inserter(releases_, releases_.begin()),
-      [](const auto& rel)
-      {
-        // return std::pair<Release, std::vector<std::string>>{rel, {}};
-        return rel;
-      });
-    /*for (const auto& el : dag_)
-    {
-      for (auto& rel_el : releases_)
-        if (path_exists(el.first, rel_el.first.commit))
-        {
-          rel_el.second.push_back(el.first);
-          break;
-        };
-    }*/
+    std::ranges::transform(releases, std::inserter(releases_, releases_.begin()), [](const auto& rel) { return rel; });
   }
-  std::set<std::string> commits_of(const Release& release)
+
+  std::set<std::string> commits_of(const Release& release) const
   {
     if (false == dag_.contains(release.commit))
       return {};
@@ -100,7 +85,19 @@ public:
       {
         return {};
       }
-
+    if (dag_.at(release.commit).empty())
+    {
+      auto depricated_root = releases_.size()>1;
+      auto rel_it          = r_it;
+      ++rel_it;
+      for (; rel_it != releases_.end(); ++rel_it)
+      {
+        if (!dag_.at(rel_it->commit).empty())
+          depricated_root = false;
+      }
+      if (depricated_root)
+        return {};
+    }
     auto ownings = std::set<std::string>{};
     auto current = std::string();
     auto holder  = std::vector<std::string>{{release.commit}};
@@ -112,9 +109,9 @@ public:
       for (const auto& commit : dag_[current])
       {
         auto add_to_holder = true;
-        for (auto rel_it = releases_.begin(); rel_it != r_it; ++rel_it)
+        for (auto older_release_it = releases_.begin(); older_release_it != r_it; ++older_release_it)
         {
-          if (/*(rel_it->first.commit == commit) || */ path_exists(rel_it->commit, commit))
+          if (/*(rel_it->first.commit == commit) || */ path_exists1(older_release_it->commit, commit))
           {
             add_to_holder = false;
             break;
@@ -179,7 +176,7 @@ private:
   }
   auto path_exists1(const std::string& c1, const std::string& c2) const -> bool
   {
-    std::cout << "path exists(" << c1 << "-" << c2 << ")";
+    //std::cout << "path exists(" << c1 << "-" << c2 << ")";
     auto que = std::queue<std::string>{};
     que.push(c1);
     auto current = std::string();
@@ -190,7 +187,7 @@ private:
       if (current == c2)
         return true;
 
-      std::cout << current << "_";
+      //std::cout << current << "_";
       for (const auto& commit : dag_[current])
         que.push(commit);
     }
@@ -198,5 +195,5 @@ private:
   }
   //  std::vector<std::string>  get_ownings()
   mutable std::map<std::string, std::vector<std::string>> dag_;
-  std::set<Release>                                       releases_;
+  mutable std::set<Release>                               releases_;
 };

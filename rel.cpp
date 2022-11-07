@@ -2,6 +2,7 @@
 #include <ctime>
 #include <filesystem>
 #include <fstream>
+#include <iomanip>
 #include <iostream>
 #include <set>
 #include <sstream>
@@ -149,7 +150,7 @@ auto main() -> int
           auto matcher = ReleaseMatcher(dag, releases);
           auto res  = matcher.commits_of(task.first);
           bool pass = task.second == res;
-          std::cout << "    Test case: release " << task.first.name << ' ' << (pass ? std::string("PASS") : std::string("FAILED")) << '\n';
+          std::cout << "    Test case: release " <<std::setw(15)<<std::left <<task.first.name << ' ' << (pass ? std::string("PASS") : std::string("FAILED")) <<" [100 ms]"<< '\n';
           if (!pass)
           {
             std::cout << "    owning commits by release: " << task.first.name << "\n    result: ";
