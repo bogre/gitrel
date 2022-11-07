@@ -163,9 +163,13 @@ auto main() -> int
           auto res     = matcher.commits_of(task.first);
                     auto end = now();
           bool pass    = task.second == res;
+                    auto time_report = std::string();
+                    if(pass){
+                        time_report = (std::stringstream()<<" ["<<duration(start,end)<<" micros]").str();
+                    }
           std::cout << "    Test case: release " << std::setw(15) << std::left << task.first.name << ' '
-                    << (pass ? std::string("PASS") : std::string("FAILED")) << " ["<<duration(start,end)<<" micros]" << '\n';
-          if (!pass)
+                    << (pass ? std::string("PASS") : std::string("FAILED")) <<std::setw(20)<<std::right << time_report << '\n';
+          if (0)//!pass)
           {
             std::cout << "    owning commits by release: " << task.first.name << "\n    result: ";
             for (const auto& commit : res)
@@ -179,7 +183,7 @@ auto main() -> int
         }
       }
       else
-        std::cout << "!!!faled reading test " << entry.path() << "\n\n";
+        std::cout << "!!!failed reading test " << entry.path() << "\n\n";
       //      for (auto el : dag)
       //        std::cout << el.parent << " " << el.child << '\n';
       dag.clear();

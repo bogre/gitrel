@@ -5,12 +5,14 @@
 #include <iterator>
 #include <map>
 #include <queue>
+#include <ranges>
 #include <set>
 #include <string>
 #include <string_view>
 #include <vector>
-
+#include <memory_resource>
 #include <bits/ranges_algo.h>
+#include <bits/ranges_util.h>
 enum class op
 {
   noop,
@@ -28,7 +30,8 @@ struct Release
   std::string name;
   std::string commit;
   std::time_t timestamp{};
-  bool        operator<(const Release& rs) const
+
+  bool operator<(const Release& rs) const
   {
     return timestamp < rs.timestamp;
   }
@@ -43,7 +46,15 @@ public:
       dag_[pc.child].push_back(pc.parent);
       dag_.try_emplace(pc.parent);
     }
-    std::ranges::transform(releases, std::inserter(releases_, releases_.begin()), [](const auto& rel) { return rel; });
+    std::ranges::transform(
+      releases,
+      std::inserter(releases_, releases_.begin()),
+      [](const auto& rel)
+      {
+        auto ancestors = std::set<std::string>{};
+        // for(auto& el: releases_)
+        return std::pair<Release, std::set<std::string>>{rel, ancestors};
+      });
   }
 
   std::set<std::string> commits_of(const Release& release) const
@@ -54,7 +65,7 @@ public:
     auto r_it = releases_.begin();
     for (; r_it != releases_.end(); ++r_it)
     {
-      if (r_it->name == release.name)
+      if (r_it->first.name == release.name)
         break;
     }
     auto add_release = false;
@@ -64,13 +75,13 @@ public:
     }
     else
     {
-      if (r_it->timestamp != release.timestamp)
+      if (r_it->first.timestamp != release.timestamp)
       {
         std::cout << "@@@@@@@@@@@@@@@@@@@@@@@@ update release time stamp\n";
         releases_.erase(r_it);
         add_release = true;
       }
-      if (r_it->commit != release.commit)
+      if (r_it->first.commit != release.commit)
       {
         std::cout << "############# update release commit\n";
         releases_.erase(r_it);
@@ -78,21 +89,21 @@ public:
       }  // r.timestamp;
     }
     if (add_release)
-      r_it = releases_.insert(r_it, release);
+      r_it = releases_.insert(r_it, {release, {}});
 
     for (auto rel_it = releases_.begin(); rel_it != r_it; ++rel_it)
-      if (rel_it->commit == release.commit)
+      if (rel_it->first.commit == release.commit)
       {
         return {};
       }
     if (dag_.at(release.commit).empty())
     {
-      auto depricated_root = releases_.size()>1;
+      auto depricated_root = releases_.size() > 1;
       auto rel_it          = r_it;
       ++rel_it;
       for (; rel_it != releases_.end(); ++rel_it)
       {
-        if (!dag_.at(rel_it->commit).empty())
+        if (!dag_.at(rel_it->first.commit).empty())
           depricated_root = false;
       }
       if (depricated_root)
@@ -105,18 +116,29 @@ public:
     {
       current = holder.back();
       holder.pop_back();
-      ownings.insert(current);
+      if(!ownings.insert(current).second)continue;
       for (const auto& commit : dag_[current])
       {
         auto add_to_holder = true;
-        for (auto older_release_it = releases_.begin(); older_release_it != r_it; ++older_release_it)
+        // auto older_release_it_reverse = releases_.rbegin();
+        for (const auto& older_release_it : std::ranges::subrange(releases_.begin(), r_it) | std::views::reverse)
         {
-          if (/*(rel_it->first.commit == commit) || */ path_exists1(older_release_it->commit, commit))
+          //std::cout << older_release_it.first.name << '\n';
+          if (/*(rel_it->first.commit == commit) || */ path_exists2(older_release_it.first.commit, commit))
           {
             add_to_holder = false;
             break;
           }
         }
+
+        /*     for (auto older_release_it = releases_.begin(); older_release_it != r_it; ++older_release_it)
+              {
+                if (/*(rel_it->first.commit == commit) ||  path_exists1(older_release_it->first.commit, commit))
+                {
+                  add_to_holder = false;
+                  break;
+                }
+              };*/
         if (add_to_holder)
           holder.push_back(commit);
       }
@@ -176,18 +198,48 @@ private:
   }
   auto path_exists1(const std::string& c1, const std::string& c2) const -> bool
   {
-    //std::cout << "path exists(" << c1 << "-" << c2 << ")";
+    // std::cout << "path exists(" << c1 << "-" << c2 << ")";
+    auto que = std::queue<std::string>{};
+    que.push(c1);
+    auto current = std::pmr::string();
+            std::byte buffer[40000];
+            std::pmr::monotonic_buffer_resource rsrc(buffer, sizeof buffer);
+    auto visited = std::pmr::set<std::pmr::string>{&rsrc};
+    while (!que.empty())
+    {
+      current = std::pmr::string(que.front());
+      que.pop();
+      auto it = visited.insert(current);
+      if (!it.second)
+        return false;
+      if (current == std::pmr::string(c2))
+        return true;
+
+      // std::cout << current << "_";
+      for (const auto& commit : dag_[std::string(current.c_str())])
+        que.push(commit);
+    }
+    return false;
+  }
+
+  auto path_exists2(const std::string& c1, const std::string& c2) const -> bool
+  {
+    // std::cout << "path exists(" << c1 << "-" << c2 << ")";
     auto que = std::queue<std::string>{};
     que.push(c1);
     auto current = std::string();
+    auto visited = std::set<std::string>{};
     while (!que.empty())
     {
       current = que.front();
       que.pop();
+      auto it = visited.insert(current);
+      if (!it.second)
+        return false;
       if (current == c2)
         return true;
 
-      //std::cout << current << "_";
+      // std::cout << current << "_";
       for (const auto& commit : dag_[current])
         que.push(commit);
     }
@@ -195,5 +247,5 @@ private:
   }
   //  std::vector<std::string>  get_ownings()
   mutable std::map<std::string, std::vector<std::string>> dag_;
-  mutable std::set<Release>                               releases_;
+  mutable std::map<Release, std::set<std::string>>        releases_;
 };
