@@ -66,7 +66,6 @@ public:
     if (false == dag_.contains(release.commit))
       return {};
 
-
     auto r_it = releases_.begin();
     for (; r_it != releases_.end(); ++r_it)
     {
@@ -76,7 +75,6 @@ public:
     auto add_release = false;
     if (r_it == releases_.end())
     {
-      // std::cout << "!!!!!!!!!!!!!!!!!!!!  add new release\n";
       add_release = true;
     }
     else
@@ -100,7 +98,6 @@ public:
     for (auto rel_it = releases_.begin(); rel_it != r_it; ++rel_it)
       if (rel_it->commit == release.commit)
       {
-        std::cout << "heeeej\n";
         return {};
       }
 
@@ -119,18 +116,10 @@ public:
         {
           if (/*(rel_it->first.commit == commit) || */ path_exists(rel_it->commit, commit))
           {
-            //        std::cout << commit << "  true\n";
             add_to_holder = false;
             break;
           }
-          //     else
-          //      std::cout << "false\n";
         }
-        /*if (auto res = std::ranges::find(releases_, commit, &Release::commit); res != releases_.end())
-        {
-          if (res->timestamp < r.timestamp)
-            break;
-        }*/
         if (add_to_holder)
           holder.push_back(commit);
       }

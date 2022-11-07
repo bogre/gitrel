@@ -132,6 +132,7 @@ auto main() -> int
     }
   };
   std::string path = "./commits_of_tests";
+  std::cout << "Test folder:" << path << '\n';
   for (const auto& entry : std::filesystem::directory_iterator(path))
   {
     if (entry.path().string().ends_with(".ini"))
@@ -140,30 +141,26 @@ auto main() -> int
 
       if (test)
       {
-        std::cout << "test:" << entry.path() << '\n';
+        std::cout << "  Test file:" << entry.path().filename() << '\n';
         read_test(test);
         //auto matcher = ReleaseMatcher(dag, releases);
         for (const auto& task : tasks)
         {
-          /*std::cout << "owning commits by release: " << task.first.name << '\n';
-          for (const auto& commit : matcher.commits_of(task.first))
-            std::cout << commit << ',';
-          std::cout << "\n";*/
-        auto matcher = ReleaseMatcher(dag, releases);
+          auto matcher = ReleaseMatcher(dag, releases);
           auto res  = matcher.commits_of(task.first);
           bool pass = task.second == res;
-          std::cout << "Test release: " << task.first.name << ' ' << (pass ? std::string("PASS") : std::string("FAILED")) << '\n';
+          std::cout << "    Test case: release " << task.first.name << ' ' << (pass ? std::string("PASS") : std::string("FAILED")) << '\n';
           if (!pass)
           {
-            std::cout << "owning commits by release: " << task.first.name << "\n result: ";
+            std::cout << "    owning commits by release: " << task.first.name << "\n    result: ";
             for (const auto& commit : res)
               std::cout << commit << ',';
             std::cout << "\n";
-            std::cout << " given: ";
+            std::cout << "    given: ";
             for (const auto& commit : task.second)
               std::cout << commit << ',';
+            std::cout << "\n";
           }
-          std::cout << "\n";
         }
       }
       else
