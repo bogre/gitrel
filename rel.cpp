@@ -1,9 +1,11 @@
+#include <chrono>
 #include <cstdint>
 #include <ctime>
 #include <filesystem>
 #include <fstream>
 #include <iomanip>
 #include <iostream>
+#include <ratio>
 #include <set>
 #include <sstream>
 #include <string>
@@ -18,6 +20,15 @@ std::vector<std::pair<Release, std::set<std::string>>> tasks;
 
 auto main() -> int
 {
+  auto now = []()
+  {
+    return std::chrono::steady_clock::now();
+  };
+  auto duration = [](const auto& start, const auto& end)
+  {
+    return std::chrono::duration<double, std::micro>(end - start).count();
+    // return std::chrono::duration_cast<typename ToDur>(const duration<Rep, Period> &d)
+  };
   auto line = std::string();
 
   auto add_rel = [&]()
@@ -144,13 +155,16 @@ auto main() -> int
       {
         std::cout << "  Test file:" << entry.path().filename() << '\n';
         read_test(test);
-        //auto matcher = ReleaseMatcher(dag, releases);
+        // auto matcher = ReleaseMatcher(dag, releases);
         for (const auto& task : tasks)
         {
           auto matcher = ReleaseMatcher(dag, releases);
-          auto res  = matcher.commits_of(task.first);
-          bool pass = task.second == res;
-          std::cout << "    Test case: release " <<std::setw(15)<<std::left <<task.first.name << ' ' << (pass ? std::string("PASS") : std::string("FAILED")) <<" [100 ms]"<< '\n';
+                    auto start = now();
+          auto res     = matcher.commits_of(task.first);
+                    auto end = now();
+          bool pass    = task.second == res;
+          std::cout << "    Test case: release " << std::setw(15) << std::left << task.first.name << ' '
+                    << (pass ? std::string("PASS") : std::string("FAILED")) << " ["<<duration(start,end)<<" micros]" << '\n';
           if (!pass)
           {
             std::cout << "    owning commits by release: " << task.first.name << "\n    result: ";
