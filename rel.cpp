@@ -169,13 +169,13 @@ auto main() -> int
                     }
           std::cout << "    Test case: release " << std::setw(15) << std::left << task.first.name << ' '
                     << (pass ? std::string("PASS") : std::string("FAILED")) <<std::setw(20)<<std::right << time_report << '\n';
-          if (0)//!pass)
+          if (!pass)
           {
-            std::cout << "    owning commits by release: " << task.first.name << "\n    result: ";
+            std::cout << "    owning commits by release: " << task.first.name<< "\n    result: ("<<res.size()<<")\n";
             for (const auto& commit : res)
               std::cout << commit << ',';
             std::cout << "\n";
-            std::cout << "    given: ";
+            std::cout << "    given: ("<<task.second.size()<<")\n";
             for (const auto& commit : task.second)
               std::cout << commit << ',';
             std::cout << "\n";
