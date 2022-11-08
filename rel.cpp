@@ -18,8 +18,21 @@ std::vector<ParentChild>                               dag;
 std::vector<Release>                                   releases;
 std::vector<std::pair<Release, std::set<std::string>>> tasks;
 
-auto main() -> int
+auto main(int argc, char** argv) -> int
 {
+    std::cout<<argc<<"ss"<<argv[1];
+  if (argc != 2 or !(std::string(argv[1]) == "t1" or std::string(argv[1]) == "t2"))
+  {
+    std::cout << "provide argument like t1 or t2 for respective task\n";
+    return 1;
+  }
+
+  auto taskno = (std::string(argv[1]) == "t1") ? 1 : 2;
+  auto path   = std::string();
+  if (taskno == 1)
+    path = "./commits_of_tests";
+  else
+    path = "./diff_tests";
   auto now = []()
   {
     return std::chrono::steady_clock::now();
@@ -143,7 +156,6 @@ auto main() -> int
         add_task();
     }
   };
-  std::string path = "./commits_of_tests";
   std::cout << "Test folder:" << path << '\n';
   for (const auto& entry : std::filesystem::directory_iterator(path))
   {
@@ -158,24 +170,25 @@ auto main() -> int
         // auto matcher = ReleaseMatcher(dag, releases);
         for (const auto& task : tasks)
         {
-          auto matcher = ReleaseMatcher(dag, releases);
-                    auto start = now();
-          auto res     = matcher.commits_of(task.first);
-                    auto end = now();
-          bool pass    = task.second == res;
-                    auto time_report = std::string();
-                    if(pass){
-                        time_report = (std::stringstream()<<" ["<<duration(start,end)<<" micros]").str();
-                    }
+          auto matcher     = ReleaseMatcher(dag, releases);
+          auto start       = now();
+          auto res         = matcher.commits_of(task.first);
+          auto end         = now();
+          bool pass        = task.second == res;
+          auto time_report = std::string();
+          if (pass)
+          {
+            time_report = (std::stringstream() << " [" << duration(start, end) << " micros]").str();
+          }
           std::cout << "    Test case: release " << std::setw(15) << std::left << task.first.name << ' '
-                    << (pass ? std::string("PASS") : std::string("FAILED")) <<std::setw(20)<<std::right << time_report << '\n';
+                    << (pass ? std::string("PASS") : std::string("FAILED")) << std::setw(20) << std::right << time_report << '\n';
           if (!pass)
           {
-            std::cout << "    owning commits by release: " << task.first.name<< "\n    result: ("<<res.size()<<")\n";
+            std::cout << "    owning commits by release: " << task.first.name << "\n    result: (" << res.size() << ")\n";
             for (const auto& commit : res)
               std::cout << commit << ',';
             std::cout << "\n";
-            std::cout << "    given: ("<<task.second.size()<<")\n";
+            std::cout << "    given: (" << task.second.size() << ")\n";
             for (const auto& commit : task.second)
               std::cout << commit << ',';
             std::cout << "\n";

@@ -59,9 +59,59 @@ public:
 
   std::set<std::string> commits_of(const Release& release) const
   {
+    if (!prepare_release(release))
+      return {};
+    auto r_it             = std::find_if(releases_.begin(), releases_.end(), [&release](const auto& R) { return R.first.commit == release.commit; });
+    auto ownings = std::set<std::string>{};
+    auto current = std::string();
+    auto holder  = std::queue<std::string>{{release.commit}};
+    while (!holder.empty())
+    {
+      current = holder.front();
+      holder.pop();
+      if (!ownings.insert(current).second)
+        continue;
+      for (const auto& commit : dag_[current])
+      {
+        if (ownings.contains(commit))
+          continue;
+        holder.push(commit);
+      }
+    }
+
+    std::set<std::string> tmp;
+    for (const auto& commit : ownings)
+      for (const auto& older_release : std::ranges::subrange(releases_.begin(), r_it))
+      {
+        if (older_release.second.contains(commit))
+        {
+          tmp.insert(commit);
+          break;
+        }
+      }
+    for (const auto& commit : tmp)
+    {
+      ownings.erase(commit);
+    }
+    return ownings;
+  }
+  std::vector<std::string> diff(const Release& r1, const Release& r2)
+  {
+    Release r;
+    if (r1 < r2)
+      r = r2;
+    else
+      r = r1;
+
+    return {};
+  }
+
+private:
+  auto prepare_release(const Release& release) const -> bool
+  {
     // handle unknown commit
     if (false == dag_.contains(release.commit))
-      return {};
+      return false;
 
     auto r_it = releases_.begin();
     for (; r_it != releases_.end(); ++r_it)
@@ -94,27 +144,13 @@ public:
     {
       r_it = releases_.insert(r_it, {release, {}});
     }
-
-    /// for (auto& [rel, ancestors] : releases_)
-    //  ancestors.clear();
-//      std::cout <<"start: "<< r_it->first.name << ": \n";
     for (auto& [rel, ancestors] : releases_)
-    {
- //     std::cout <<"prepare: "<< rel.name << ": \n";
       ancestors = get_release_ancestors(rel.commit);
-      for (auto& a : ancestors)
-      {
-  //      std::cout << a << " ";
-      }
-   //   std::cout << "\n ";
-    }
-
     // handle case when release commit is also tagged with older release
     for (auto rel_it = releases_.begin(); rel_it != r_it; ++rel_it)
       if (rel_it->first.commit == release.commit)
-      {
-        return {};
-      }
+        return false;
+
     // handle case when release commit is DAG root with non-existing younger non-root
     // release
     if (dag_.at(release.commit).empty())
@@ -128,104 +164,10 @@ public:
           depricated_root = false;
       }
       if (depricated_root)
-        return {};
+        return false;
     }
-    /*auto new_commmit = std::string();
-     for (const auto& older_release : std::ranges::subrange(releases_.begin(), r_it) | std::views::reverse)
-     {//std::cout<<"iinnnnn   "<<older_release.first.commit<<"\n";
-       if (path_exists2(older_release.first.commit, r_it->first.commit))
-       {
-         new_commmit = older_release.first.commit;
-       }//std::cout<<"ooouuuuuttt"<<older_release.first.commit<<"\n";
-     }
-     if (new_commmit.size())
-       for (r_it = releases_.begin(); r_it->first.commit != new_commmit; ++r_it)
-       {
-       }*/
-    auto ownings = std::set<std::string>{};
-    auto current = std::string();
-    auto holder  = std::queue<std::string>{{release.commit}};
-    while (!holder.empty())
-    {
-      current = holder.front();
-      holder.pop();
-      if (!ownings.insert(current).second)
-        continue;
-      for (const auto& commit : dag_[current])
-      {
-        if (ownings.contains(commit))
-          continue;
-        // auto add_to_holder = true;
-        //  auto older_release_it_reverse = releases_.rbegin();
-        // auto memoi = std::set<std::string>();
-        //  for (const auto& older_release_it : std::ranges::subrange(releases_.begin(), r_it) | std::views::reverse)
-
-        /*     for (auto older_release_it = releases_.begin(); older_release_it != r_it; ++older_release_it)
-              {
-                if (/*(rel_it->first.commit == commit) ||  path_exists1(older_release_it->first.commit, commit))
-                {
-                  add_to_holder = false;
-                  break;
-                }
-              };*/
-        // if (add_to_holder)
-        holder.push(commit);
-      }
-    }
-    /*    if (ownings.size() == 1 && *ownings.begin() == release.commit && releases_.size()>1 && (--releases_.end())->first.name == release.name)
-        {
-          ownings.clear();
-        }*/
-    std::set<std::string> tmp;
-    for (const auto& commit : ownings)
-      for (const auto& older_release : std::ranges::subrange(releases_.begin(), r_it))
-      {
-        // std::cout << older_release_it.first.name << '\n';
-        if (older_release.second.contains(commit))
-        {
-          tmp.insert(commit);
-          break;
-        }
-      }
- //   std::cout << release.name << ", for erasing:\n";
-    for (const auto& commit : tmp)
-    {
-  //    std::cout << commit << " ";
-      ownings.erase(commit);
-    }
-//    std::cout << "\n ";
-    return ownings;
+    return true;
   }
-  std::vector<std::string> diff(Release r)
-  {
-    auto ownings = std::vector<std::string>{};
-    auto current = std::string();
-    auto holder  = std::vector<std::string>{{r.commit}};
-    while (!holder.empty())
-    {
-      current = holder.back();
-      holder.pop_back();
-      ownings.push_back(current);
-      for (const auto& commit : dag_[current])
-      {
-        /*if (auto res = std::ranges::find(releases_, commit, &Release::commit); res != releases_.end())
-        {
-          if (res->timestamp < r.timestamp)
-            break;
-        }*/
-        holder.push_back(commit);
-      }
-    }
-    return ownings;
-    /*auto& ancestors = dag_[r.commit];
-    std::ranges::copy_if(
-      ancestors,
-      std::back_inserter(ownings),
-      [this](const std::string& c) { return releases_.end() != std::ranges::fsecondsecondind(releases_, c, &Release::commit); });
-    return {};*/
-  }
-
-private:
   auto get_release_ancestors(const std::string& commit) const -> std::set<std::string>
   {
     auto r_it             = std::find_if(releases_.begin(), releases_.end(), [&commit](const auto& R) { return R.first.commit == commit; });
@@ -251,16 +193,16 @@ private:
       current = que.front();
       que.pop();
       auto it = visited.insert(current);
-//      std::cout << "current " << current << "\n ";
+      //      std::cout << "current " << current << "\n ";
       if (!it.second)
         continue;
       for (const auto& ct : dag_[current])
       {
- //       std::cout << "ct: " << ct << ", ";
+        //       std::cout << "ct: " << ct << ", ";
         if (!(visited.contains(ct) or already_released(ct)))
         {
-  //        std::cout << "pushed "
-                 //   << "\n ";
+          //        std::cout << "pushed "
+          //   << "\n ";
           que.push(ct);
         }
       }
