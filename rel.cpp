@@ -20,7 +20,6 @@ std::vector<std::pair<Release, std::set<std::string>>> tasks;
 
 auto main(int argc, char** argv) -> int
 {
-    std::cout<<argc<<"ss"<<argv[1];
   if (argc != 2 or !(std::string(argv[1]) == "t1" or std::string(argv[1]) == "t2"))
   {
     std::cout << "provide argument like t1 or t2 for respective task\n";
@@ -124,7 +123,7 @@ auto main(int argc, char** argv) -> int
           belongings.insert(line.substr(start, end - start));
         }
         tasks.emplace_back(release, belongings);
-     }
+      }
     }
   };
   auto read_test = [&](std::ifstream& input)
