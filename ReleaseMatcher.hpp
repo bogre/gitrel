@@ -174,8 +174,6 @@ private:
     auto procceed         = r_it != releases_.end();
     auto already_released = [&, this](const auto& ct)
     {
-      // std::ranges::find(releases_, commit, &releases_::value_type::first::commit);
-      //       auto r_it = std::ranges::find_if(releases_, [&commit](const auto& c){return c==commit;}, &Release::commit);
       if (procceed)
         for (const auto& older_release_it : std::ranges::subrange(releases_.begin(), r_it) | std::views::reverse)
         {
@@ -193,90 +191,17 @@ private:
       current = que.front();
       que.pop();
       auto it = visited.insert(current);
-      //      std::cout << "current " << current << "\n ";
       if (!it.second)
         continue;
       for (const auto& ct : dag_[current])
       {
-        //       std::cout << "ct: " << ct << ", ";
         if (!(visited.contains(ct) or already_released(ct)))
-        {
-          //        std::cout << "pushed "
-          //   << "\n ";
           que.push(ct);
-        }
       }
     }
     return visited;
   }
-  auto path_exists(const std::string& c1, const std::string& c2) const -> bool
-  {
-    static std::set<std::string> visited;
-    if (c1 == c2)
-      return true;
-    auto res = visited.insert(c1);
-    if (!res.second)
-    {
-      visited.clear();
-      return false;
-    }
-    for (const auto& commit : dag_[c1])
-      if (path_exists(commit, c2))
-        return true;
-    return false;
-  }
-  auto path_exists1(const std::string& c1, const std::string& c2) const -> bool
-  {
-    // std::cout << "path exists(" << c1 << "-" << c2 << ")";
-    auto que = std::queue<std::string>{};
-    que.push(c1);
-    auto                                current = std::pmr::string();
-    std::byte                           buffer[40000];
-    std::pmr::monotonic_buffer_resource rsrc(buffer, sizeof buffer);
-    auto                                visited = std::pmr::set<std::pmr::string>{&rsrc};
-    while (!que.empty())
-    {
-      current = std::pmr::string(que.front());
-      que.pop();
-      auto it = visited.insert(current);
-      if (!it.second)
-        return false;
-      if (current == std::pmr::string(c2))
-        return true;
 
-      // std::cout << current << "_";
-      for (const auto& commit : dag_[std::string(current.c_str())])
-        que.push(commit);
-    }
-    return false;
-  }
-
-  auto path_exists2(const std::string& c1, const std::string& c2) const -> bool
-  {
-    // std::cout << "path exists(" << c1 << "-" << c2 << ")";
-    auto que = std::queue<std::string>{};
-    que.push(c1);
-    auto current = std::string();
-    auto visited = std::set<std::string>{};
-    while (!que.empty())
-    {
-      current = que.front();
-      que.pop();
-      auto it = visited.insert(current);
-      if (!it.second && current != c1)
-        continue;
-      // return false;
-      if (current == c2)
-        return true;
-
-      // std::cout << current << "_";
-      for (const auto& commit : dag_[current])
-        if (!visited.contains(commit))
-          que.push(commit);
-    }
-    return false;
-  }
-  //  std::vector<std::string>  get_ownings()
   mutable std::map<std::string, std::vector<std::string>> dag_;
   mutable std::map<Release, std::set<std::string>>        releases_;
 };

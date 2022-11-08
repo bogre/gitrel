@@ -40,7 +40,6 @@ auto main(int argc, char** argv) -> int
   auto duration = [](const auto& start, const auto& end)
   {
     return std::chrono::duration<double, std::micro>(end - start).count();
-    // return std::chrono::duration_cast<typename ToDur>(const duration<Rep, Period> &d)
   };
   auto line = std::string();
 
@@ -119,21 +118,13 @@ auto main(int argc, char** argv) -> int
           while (end != std::string::npos)
           {
             belongings.insert(line.substr(start, end - start));
-            // tasks[release].push_back(line.substr(start, end - start));
             start = end + 1;
             end   = line.find(",", start);
           }
           belongings.insert(line.substr(start, end - start));
         }
         tasks.emplace_back(release, belongings);
-        /*if (std::ranges::find(releases, rel, &Release::name) == releases.end())
-                  {  releases.push_back(release); }*/
-        // tasks[release].push_back(line.substr(start, end - start));
-        /*for (auto el :tasks[release]){
-            std::cout<<rel<<".."<<el<<"..\n";
-        }
-        tasks[release]=belongings;*/
-      }
+     }
     }
   };
   auto read_test = [&](std::ifstream& input)
@@ -167,7 +158,6 @@ auto main(int argc, char** argv) -> int
       {
         std::cout << "  Test file:" << entry.path().filename() << '\n';
         read_test(test);
-        // auto matcher = ReleaseMatcher(dag, releases);
         for (const auto& task : tasks)
         {
           auto matcher     = ReleaseMatcher(dag, releases);
@@ -197,17 +187,8 @@ auto main(int argc, char** argv) -> int
       }
       else
         std::cout << "!!!failed reading test " << entry.path() << "\n\n";
-      //      for (auto el : dag)
-      //        std::cout << el.parent << " " << el.child << '\n';
       dag.clear();
-      //      for (auto el : releases)
-      //        std::cout << el.name << " " << el.commit << " " << el.timestamp << '\n';
       releases.clear();
-      /*      for (auto el : tasks)
-            {
-              std::cout << el.first.name << " --->>> ";
-              for(auto vel : el.second) std::cout<< " " << vel << '\n';
-            }*/
       tasks.clear();
     }
   }
