@@ -61,7 +61,9 @@ public:
   {
     if (!prepare_release(release))
       return {};
-    auto r_it             = std::find_if(releases_.begin(), releases_.end(), [&release](const auto& R) { return R.first.commit == release.commit; });
+
+    auto r_it = std::find_if(releases_.begin(), releases_.end(), [&release](const auto& R) { return R.first.commit == release.commit; });
+
     auto ownings = std::set<std::string>{};
     auto current = std::string();
     auto holder  = std::queue<std::string>{{release.commit}};
@@ -95,15 +97,14 @@ public:
     }
     return ownings;
   }
-  std::vector<std::string> diff(const Release& r1, const Release& r2)
+  std::set<std::string> diff(const Release& r1, const Release& r2)
   {
-    Release r;
-    if (r1 < r2)
-      r = r2;
-    else
-      r = r1;
-
-    return {};
+    if(!dag_.count(r2.commit) or !dag_.count(r1.commit))return {};
+    auto res1 = get_release_ancestors(r1.commit);
+    auto res2 = get_release_ancestors(r2.commit);
+    auto res = std::set<std::string>();
+    std::set_difference(res2.begin(),res2.end(),res1.begin(),res1.end(),std::inserter(res,res.begin()));
+    return res;
   }
 
 private:
@@ -168,10 +169,10 @@ private:
     }
     return true;
   }
-  auto get_release_ancestors(const std::string& commit) const -> std::set<std::string>
+  auto get_release_ancestors(const std::string& commit, bool check_released = true) const -> std::set<std::string>
   {
     auto r_it             = std::find_if(releases_.begin(), releases_.end(), [&commit](const auto& R) { return R.first.commit == commit; });
-    auto procceed         = r_it != releases_.end();
+    auto procceed         = check_released && r_it != releases_.end();
     auto already_released = [&, this](const auto& ct)
     {
       if (procceed)
